@@ -23,13 +23,10 @@ def train_rl_agent(algorithm="PPO", num_iterations=100, checkpoint_freq=10):
         checkpoint_freq: How often to save checkpoints
     """
 
-    # Initialize Ray
     ray.init(ignore_reinit_error=True)
 
-    # Register the environment
     register_env("code_generation_env", env_creator)
 
-    # Configuration based on algorithm
     if algorithm == "PPO":
         config = {
             "env": "code_generation_env",
@@ -47,7 +44,6 @@ def train_rl_agent(algorithm="PPO", num_iterations=100, checkpoint_freq=10):
                     "Create a function to validate email addresses"
                 ]
             },
-            # PPO specific config
             "framework": "torch",
             "num_workers": 2,
             "num_envs_per_worker": 1,
@@ -75,7 +71,6 @@ def train_rl_agent(algorithm="PPO", num_iterations=100, checkpoint_freq=10):
                     "Implement a simple calculator"
                 ]
             },
-            # DQN specific config
             "framework": "torch",
             "num_workers": 1,
             "buffer_size": 10000,
@@ -103,7 +98,6 @@ def train_rl_agent(algorithm="PPO", num_iterations=100, checkpoint_freq=10):
                     "Write a function to compute factorial"
                 ]
             },
-            # SAC specific config
             "framework": "torch",
             "num_workers": 1,
             "buffer_size": 10000,
@@ -123,10 +117,8 @@ def train_rl_agent(algorithm="PPO", num_iterations=100, checkpoint_freq=10):
     else:
         raise ValueError(f"Unknown algorithm: {algorithm}")
 
-    # Create trainer
     trainer = trainer_class(config=config)
 
-    # Training results
     results = []
 
     print(f"Starting {algorithm} training...")
@@ -134,10 +126,8 @@ def train_rl_agent(algorithm="PPO", num_iterations=100, checkpoint_freq=10):
     print(f"Training for {num_iterations} iterations")
 
     for i in range(num_iterations):
-        # Train for one iteration
         result = trainer.train()
 
-        # Store results
         results.append({
             "iteration": i,
             "episode_reward_mean": result.get("episode_reward_mean", 0),
@@ -146,19 +136,16 @@ def train_rl_agent(algorithm="PPO", num_iterations=100, checkpoint_freq=10):
             "timesteps_total": result.get("timesteps_total", 0),
         })
 
-        # Print progress
         if (i + 1) % 10 == 0:
             print(f"Iteration {i+1}/{num_iterations}")
             print(f"  Mean Reward: {result.get('episode_reward_mean', 0):.2f}")
             print(f"  Mean Episode Length: {result.get('episode_len_mean', 0):.2f}")
             print(f"  Total Episodes: {result.get('episodes_total', 0)}")
 
-        # Save checkpoint
         if (i + 1) % checkpoint_freq == 0:
             checkpoint_path = trainer.save()
             print(f"Checkpoint saved at: {checkpoint_path}")
 
-    # Final checkpoint
     final_checkpoint = trainer.save()
     print(f"Training completed! Final checkpoint: {final_checkpoint}")
 
@@ -312,8 +299,6 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     if args.evaluate:
-        # Evaluation mode
         evaluate_trained_agent(args.evaluate, args.algorithm, args.eval_episodes)
     else:
-        # Training mode
         train_rl_agent(args.algorithm, args.iterations, args.checkpoint_freq)

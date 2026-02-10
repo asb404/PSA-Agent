@@ -14,7 +14,6 @@ class ProblemRequest(BaseModel):
 async def solve_problem_endpoint(request: ProblemRequest):
     """Solve a problem using the PSA agent."""
     try:
-        # Run the agent in a thread pool since it might be blocking
         result = await asyncio.get_event_loop().run_in_executor(None, solve_problem, request.problem)
         return {"result": result}
     except Exception as e:

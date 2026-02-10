@@ -18,7 +18,6 @@ class CodeGenerationEnv(gym.Env):
     def __init__(self, problems: List[str] = None):
         super().__init__()
 
-        # Default problems if none provided
         if problems is None:
             problems = [
                 "Write a function to add two numbers",
@@ -35,13 +34,6 @@ class CodeGenerationEnv(gym.Env):
         self.max_attempts = 5
         self.generated_codes = []
         self.test_results = []
-
-        # Action space: Different generation strategies
-        # 0: Direct generation
-        # 1: Step-by-step reasoning
-        # 2: Modify previous attempt
-        # 3: Use simpler approach
-        # 4: Use more complex approach
         self.action_space = spaces.Discrete(5)
 
         # State space: Encoded features
@@ -56,7 +48,6 @@ class CodeGenerationEnv(gym.Env):
         """Reset environment for new episode."""
         super().reset(seed=seed)
 
-        # Select random problem
         if seed is not None:
             np.random.seed(seed)
         self.current_problem_idx = np.random.randint(len(self.problems))
@@ -70,19 +61,15 @@ class CodeGenerationEnv(gym.Env):
 
     def _get_state(self) -> np.ndarray:
         """Get current state representation."""
-        # Problem hash (normalized to 0-1)
         problem_hash = int(hashlib.md5(self.current_problem.encode()).hexdigest(), 16) % 1000 / 1000.0
 
-        # Attempt count (normalized)
         attempt_norm = self.attempt_count / self.max_attempts
 
-        # Previous test success (0 or 1)
         prev_success = 1.0 if self.test_results and self.test_results[-1]['returncode'] == 0 else 0.0
 
-        # Code metrics (if code exists)
         if self.generated_codes:
             code = self.generated_codes[-1]
-            code_length = min(len(code) / 1000.0, 1.0)  # Normalize to 0-1
+            code_length = min(len(code) / 1000.0, 1.0)  
             code_complexity = self._calculate_complexity(code)
         else:
             code_length = 0.0
@@ -98,42 +85,34 @@ class CodeGenerationEnv(gym.Env):
 
     def _calculate_complexity(self, code: str) -> float:
         """Calculate code complexity metric."""
-        # Simple complexity based on keywords and nesting
         keywords = ['if', 'for', 'while', 'def', 'class', 'try', 'except']
         keyword_count = sum(code.count(kw) for kw in keywords)
 
-        # Nesting level (rough estimate)
         indent_levels = [len(line) - len(line.lstrip()) for line in code.split('\n') if line.strip()]
         max_indent = max(indent_levels) // 4 if indent_levels else 0
 
-        # Lines of code
         lines = len([line for line in code.split('\n') if line.strip()])
 
         complexity = (keyword_count * 0.3 + max_indent * 0.4 + lines * 0.1)
-        return min(complexity / 10.0, 1.0)  # Normalize to 0-1
+        return min(complexity / 10.0, 1.0)  
 
     def step(self, action: int) -> Tuple[np.ndarray, float, bool, bool, Dict]:
         """Execute one step in the environment."""
         self.attempt_count += 1
 
-        # Generate code based on action
         code = self._generate_code(action)
         self.generated_codes.append(code)
 
-        # Test the code
         test_result = self._test_code(code)
         self.test_results.append(test_result)
 
-        # Calculate reward
         reward = self._calculate_reward(code, test_result, action)
 
-        # Check if episode is done
         done = (
             test_result['returncode'] == 0 or  # Success
             self.attempt_count >= self.max_attempts  # Max attempts reached
         )
 
-        # Get next state
         next_state = self._get_state()
 
         return next_state, reward, done, False, {
@@ -147,29 +126,22 @@ class CodeGenerationEnv(gym.Env):
         base_prompt = f"Solve this programming problem: {self.current_problem}"
 
         if action == 0:
-            # Direct generation
             prompt = base_prompt
         elif action == 1:
-            # Step-by-step reasoning
             prompt = f"{base_prompt}\nThink step by step and then provide the complete solution."
         elif action == 2 and self.generated_codes:
-            # Modify previous attempt
             prev_code = self.generated_codes[-1]
             prev_result = self.test_results[-1]
             prompt = f"{base_prompt}\nPrevious attempt failed. Code: {prev_code}\nTest result: {prev_result}\nImprove this solution."
         elif action == 3:
-            # Simpler approach
             prompt = f"{base_prompt}\nProvide a simple, straightforward solution."
         elif action == 4:
-            # More complex approach
             prompt = f"{base_prompt}\nProvide a more robust, feature-complete solution."
         else:
             prompt = base_prompt
 
-        # For now, use the existing agent (in a real implementation, this would be replaced with RL-controlled generation)
         try:
             result = solve_problem(self.current_problem)
-            # Extract code from result (this is a simplified extraction)
             code_match = re.search(r'Generated Code:\n(.*?)(?=\n\nTest Results:|$)', result, re.DOTALL)
             if code_match:
                 return code_match.group(1).strip()
@@ -184,12 +156,10 @@ class CodeGenerationEnv(gym.Env):
         import os
 
         with tempfile.TemporaryDirectory() as tmpdir:
-            # Write code
             code_file = os.path.join(tmpdir, "solution.py")
             with open(code_file, "w") as f:
                 f.write(code)
 
-            # Write basic test
             test_file = os.path.join(tmpdir, "test_solution.py")
             with open(test_file, "w") as f:
                 f.write("""
@@ -201,7 +171,6 @@ def test_basic():
     assert True
 """)
 
-            # Run tests with limits
             result = run_pytest_in_sandbox(tmpdir, timeout=10, cpu_time=2, memory_bytes=50_000_000)
             return result
 
@@ -209,28 +178,23 @@ def test_basic():
         """Calculate reward for the current step."""
         reward = 0.0
 
-        # Base reward for test success
         if test_result['returncode'] == 0:
             reward += 10.0  # Big reward for success
         else:
             reward -= 2.0   # Penalty for failure
 
-        # Efficiency bonus (fewer attempts better)
         efficiency_bonus = (self.max_attempts - self.attempt_count) * 0.5
         reward += efficiency_bonus
 
-        # Code quality rewards/penalties
         code_length = len(code)
         if code_length < 50:  # Too short
             reward -= 1.0
         elif code_length > 500:  # Too long
             reward -= 0.5
 
-        # Penalty for repeated actions
         if len(self.generated_codes) > 1 and self.generated_codes[-1] == self.generated_codes[-2]:
             reward -= 1.0
 
-        # Bonus for using different strategies
         if action in [1, 2, 3, 4]:  # Non-default actions
             reward += 0.2
 
@@ -246,15 +210,12 @@ def test_basic():
             success = self.test_results[-1]['returncode'] == 0
             print(f"Last test: {'PASS' if success else 'FAIL'}")
 
-# Example usage and testing
 if __name__ == "__main__":
     env = CodeGenerationEnv()
 
-    # Test environment
     state, _ = env.reset()
     print("Initial state:", state)
 
-    # Take a few random actions
     for i in range(3):
         action = env.action_space.sample()
         next_state, reward, done, _, info = env.step(action)

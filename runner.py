@@ -11,14 +11,12 @@ def _preexec_set_limits(cpu_time: int = None, memory_bytes: int = None):
             resource.setrlimit(resource.RLIMIT_CPU, (desired, desired))
         if memory_bytes is not None:
             soft, hard = resource.getrlimit(resource.RLIMIT_AS)
-            # If hard == RLIM_INFINITY, we can set soft to memory_bytes safely
             if hard != resource.RLIM_INFINITY:
                 desired_mem = min(memory_bytes, hard)
             else:
                 desired_mem = memory_bytes
             resource.setrlimit(resource.RLIMIT_AS, (desired_mem, desired_mem))
     except Exception as e:
-        # keep this warning for visibility in logs but don't fail
         print(f'warning: could not set rlimits: {e}', file=sys.stderr)
 
 

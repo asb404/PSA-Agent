@@ -29,7 +29,6 @@ def demo_environment():
 
     print("Testing RL environment with random actions...")
 
-    # Run a few episodes with random actions
     for episode in range(3):
         print(f"\n--- Episode {episode + 1} ---")
 
@@ -40,11 +39,9 @@ def demo_environment():
         total_reward = 0
         steps = 0
 
-        while not done and steps < 3:  # Limit steps for demo
-            # Take random action
+        while not done and steps < 3:  
             action = env.action_space.sample()
 
-            # Step environment
             next_state, reward, done, _, info = env.step(action)
 
             print(f"Step {steps + 1}: Action={action}, Reward={reward:.2f}, Done={done}")
@@ -66,13 +63,10 @@ def quick_training_demo():
     print("QUICK RL TRAINING DEMO")
     print("=" * 60)
 
-    # Initialize Ray
     ray.init(ignore_reinit_error=True, num_cpus=2)
 
-    # Register environment
     register_env("code_generation_env", env_creator)
 
-    # Simple PPO config for quick demo
     config = {
         "env": "code_generation_env",
         "env_config": {
@@ -82,7 +76,7 @@ def quick_training_demo():
             ]
         },
         "framework": "torch",
-        "num_workers": 0,  # Run on main process for demo
+        "num_workers": 0,  
         "rollout_fragment_length": 50,
         "train_batch_size": 100,
         "sgd_minibatch_size": 50,
@@ -111,7 +105,6 @@ def quick_training_demo():
 
         print(f"Iteration {i + 1}: Mean Reward = {reward:.2f}, Episodes = {episodes}")
 
-    # Quick evaluation
     print("\nEvaluating trained policy...")
     env = CodeGenerationEnv()
 
@@ -147,7 +140,6 @@ def quick_training_demo():
     print(f"Average Reward: {avg_reward:.2f}")
     print(f"Success Rate: {success_rate:.1%}")
 
-    # Save results
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     results_file = f"rl_demo_results_{timestamp}.json"
 
@@ -163,7 +155,6 @@ def quick_training_demo():
 
     print(f"\nDemo results saved to: {results_file}")
 
-    # Cleanup
     trainer.stop()
     env.close()
     ray.shutdown()
@@ -212,13 +203,10 @@ def main():
     print("This demo shows how RL can improve code generation strategies.")
 
     try:
-        # Show concepts first
         show_rl_concepts()
 
-        # Demo environment
         demo_environment()
 
-        # Quick training demo
         quick_training_demo()
 
         print("\n" + "=" * 60)
